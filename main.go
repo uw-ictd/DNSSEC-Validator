@@ -22,20 +22,35 @@ func query(hostname string, dnsQueryType uint16) ([]dns.RR, *resolver.Authentica
 
 func worker(id int, rq *resolver.Resolver, records <-chan Record, results chan<- Record) {
 	for r := range records {
-		_, chain, err := rq.StrictNSQuery(r.Domain, dns.TypeA)
+		_, _, err := rq.StrictNSQuery(r.Domain, dns.TypeA)
 		if err != nil {
-			results <- Record{Domain: r.Domain, DNSSECExists: false, DNSSECValid: false, reason: err.Error()}
-		} else {
-			if chain == nil {
-				results <- Record{
-					Domain:       r.Domain,
-					DNSSECExists: true,
-					DNSSECValid:  false,
-					reason:       err.Error(),
-				}
-			} else {
-				results <- Record{Domain: r.Domain, DNSSECExists: true, DNSSECValid: true, reason: ""}
+			r := Record{Domain: r.Domain}
+			if err == resolver.ErrInvalidQuery {
+				r.reason = err.Error()
+				r.DNSSECExists = false
+				r.DNSSECValid = false
 			}
+			if err == resolver.ErrResourceNotSigned {
+				// Typical base case where there is no DNSSEC
+				r.reason = err.Error()
+				r.DNSSECExists = false
+				r.DNSSECValid = false
+			}
+			// All of the following cases hint about DNSSEC but are invalid.
+			if err == resolver.ErrInvalidRRsig || // Invalid RRSIG returned
+				err == resolver.ErrRrsigValidationError || // Signature is invalid
+				err == resolver.ErrRrsigValidityPeriod || // Signature has expired
+				err == resolver.ErrDsInvalid || // Delegation is invalid
+				err == resolver.ErrUnknownDsDigestType || // DigestType is unknown for DS
+				err == resolver.ErrDnskeyNotAvailable || // DNSKEY was hinted but not available
+				err == resolver.ErrDelegationChain {  // Verify was called but with an empty delegation chain.. Should not have happened.
+				r.reason = err.Error()
+				r.DNSSECExists = true
+				r.DNSSECValid = false
+			}
+			results <- r
+		} else {
+			results <- Record{Domain: r.Domain, DNSSECExists: true, DNSSECValid: true, reason: ""}
 		}
 	}
 }
@@ -81,15 +96,18 @@ func measure(c *cli.Context) error {
 
 func singleMeasure(c *cli.Context) error {
 	fqdn := c.String("fqdn")
-	res, chain, err := query(fqdn, dns.TypeA)
+	_, chain, err := query(fqdn, dns.TypeA)
 	if err != nil {
+		if chain == nil {
+			fmt.Printf("Chain is nil.\n")
+		}
 		return err
 	}
 	fmt.Printf("Valid DNS Record Answer for %v (%v)\n", fqdn, dns.TypeA)
-	answer := res
-	for _, a := range answer {
-		fmt.Printf("%v\n", a)
-	}
+	//answer := res
+	//for _, a := range answer {
+	//	fmt.Printf("%v\n", a)
+	//}
 	fmt.Printf("containing the chain...\n")
 	fmt.Printf("-----------------------CHAIN-----------------------\n")
 	zones := chain.DelegationChain

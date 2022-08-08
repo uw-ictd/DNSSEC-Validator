@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/miekg/dns"
+	"log"
 	"time"
 )
 
@@ -26,6 +27,7 @@ var (
 	ErrNsNotAvailable       = errors.New("no name server to answer the question")
 	ErrDnskeyNotAvailable   = errors.New("DNSKEY RR does not exist")
 	ErrDsNotAvailable       = errors.New("DS RR does not exist")
+	ErrRRSigNotAvailable    = errors.New("RRSIG does not exist")
 	ErrInvalidRRsig         = errors.New("invalid RRSIG")
 	ErrRrsigValidationError = errors.New("RR doesn't validate against RRSIG")
 	ErrRrsigValidityPeriod  = errors.New("invalid RRSIG validity period")
@@ -63,6 +65,7 @@ func localQuery(qname string, qtype uint16) (*dns.Msg, error) {
 	for _, server := range servers {
 		r, _, err := resolver.dnsClient.Exchange(dnsMessage, fmt.Sprintf("%s:%d", server, DNSPort))
 		if err != nil {
+			log.Printf("Using %v , error : %v", server, err)
 			return nil, err
 		}
 		if r == nil || r.Rcode == dns.RcodeNameError || r.Rcode == dns.RcodeSuccess {
@@ -84,6 +87,11 @@ func queryDelegation(domainName string) (signedZone *SignedZone, err error) {
 	}
 	signedZone.PubKeyLookup = make(map[uint16]*dns.DNSKEY)
 	for _, rr := range signedZone.Dnskey.RrSet {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("[%v] panic occurred: %v", domainName, err)
+			}
+		}()
 		signedZone.addPubKey(rr.(*dns.DNSKEY))
 	}
 

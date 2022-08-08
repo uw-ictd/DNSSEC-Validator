@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"github.com/miekg/dns"
-	"log"
 	"strings"
 	"time"
 )
@@ -34,24 +33,24 @@ func (z SignedZone) addPubKey(k *dns.DNSKEY) {
 func (z SignedZone) verifyRRSIG(signedRRset *RRSet) (err error) {
 
 	if !signedRRset.IsSigned() {
-		return ErrInvalidRRsig
+		return ErrRRSigNotAvailable
 	}
 
 	// Verify the RRSIG of the DNSKEY RRset
 	key := z.lookupPubKey(signedRRset.RrSig.KeyTag)
 	if key == nil {
-		log.Printf("DNSKEY keytag %d not found", signedRRset.RrSig.KeyTag)
+		//log.Printf("DNSKEY keytag %d not found", signedRRset.RrSig.KeyTag)
 		return ErrDnskeyNotAvailable
 	}
 
 	err = signedRRset.RrSig.Verify(key, signedRRset.RrSet)
 	if err != nil {
-		log.Println("DNSKEY verification", err)
+		//log.Println("DNSKEY verification", err)
 		return err
 	}
 
 	if !signedRRset.RrSig.ValidityPeriod(time.Now()) {
-		log.Println("invalid validity period", err)
+		//log.Println("invalid validity period", err)
 		return ErrRrsigValidityPeriod
 	}
 	return nil
@@ -68,14 +67,14 @@ func (z SignedZone) verifyDS(dsRrset []dns.RR) (err error) {
 		ds := rr.(*dns.DS)
 
 		if ds.DigestType != dns.SHA256 {
-			log.Printf("Unknown digest type (%d) on DS RR", ds.DigestType)
+			//log.Printf("Unknown digest type (%d) on DS RR", ds.DigestType)
 			continue
 		}
 
 		parentDsDigest := strings.ToUpper(ds.Digest)
 		key := z.lookupPubKey(ds.KeyTag)
 		if key == nil {
-			log.Printf("DNSKEY keytag %d not found", ds.KeyTag)
+			//log.Printf("DNSKEY keytag %d not found", ds.KeyTag)
 			return ErrDnskeyNotAvailable
 		}
 		dsDigest := strings.ToUpper(key.ToDS(ds.DigestType).Digest)
@@ -83,7 +82,7 @@ func (z SignedZone) verifyDS(dsRrset []dns.RR) (err error) {
 			return nil
 		}
 
-		log.Printf("DS does not match DNSKEY\n")
+		//log.Printf("DS does not match DNSKEY\n")
 		return ErrDsInvalid
 	}
 	return ErrUnknownDsDigestType

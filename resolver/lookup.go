@@ -38,7 +38,7 @@ func (resolver *Resolver) LookupIP(qname string) (ips []net.IP, err error) {
 	}
 
 	if len(answers) < 1 {
-		log.Printf("no results")
+		//log.Printf("no results")
 		return nil, ErrNoResult
 	}
 
@@ -46,14 +46,14 @@ func (resolver *Resolver) LookupIP(qname string) (ips []net.IP, err error) {
 	authChain := NewAuthenticationChain()
 	err = authChain.Populate(signerName)
 	if err != nil {
-		log.Printf("Cannot populate authentication chain: %s\n", err)
+		//log.Printf("Cannot populate authentication chain: %s\n", err)
 		return nil, err
 	}
 	resultIPs := make([]net.IP, MaxReturnedIPAddressesCount)
 	for _, answer := range answers {
 		err = authChain.Verify(answer)
 		if err != nil {
-			log.Printf("DNSSEC validation failed: %s\n", err)
+			//log.Printf("DNSSEC validation failed: %s\n", err)
 			continue
 		}
 		ips := FormatResultRRs(answer)
@@ -95,13 +95,13 @@ func (resolver *Resolver) LookupIPType(qname string, qtype uint16) (ips []net.IP
 	authChain := NewAuthenticationChain()
 	err = authChain.Populate(signerName)
 	if err != nil {
-		log.Printf("Cannot populate authentication chain: %s\n", err)
+		//log.Printf("Cannot populate authentication chain: %s\n", err)
 		return nil, err
 	}
 
 	err = authChain.Verify(answer)
 	if err != nil {
-		log.Printf("DNSSEC validation failed: %s\n", err)
+		//log.Printf("DNSSEC validation failed: %s\n", err)
 		return nil, err
 	}
 
@@ -109,7 +109,7 @@ func (resolver *Resolver) LookupIPType(qname string, qtype uint16) (ips []net.IP
 }
 
 func (resolver *Resolver) StrictNSQuery(qname string, qtype uint16) (rrSet []dns.RR, chain *AuthenticationChain, err error) {
-
+	log.Printf("%v\n", qname)
 	if len(qname) < 1 {
 		return nil, nil, ErrInvalidQuery
 	}
@@ -138,7 +138,6 @@ func (resolver *Resolver) StrictNSQuery(qname string, qtype uint16) (rrSet []dns
 
 	err = authChain.Verify(answer)
 	if err != nil {
-		log.Printf("DNSSEC validation failed: %s\n", err)
 		return nil, authChain, err
 	}
 

@@ -71,39 +71,44 @@ func (authChain *AuthenticationChain) Verify(answerRRset *RRSet) error {
 
 	err := signedZone.verifyRRSIG(answerRRset)
 	if err != nil {
-		log.Println("RRSIG didn't verify", err)
+		//log.Println("RRSIG didn't verify", err)
 		return ErrInvalidRRsig
 	}
 
 	for _, signedZone := range authChain.DelegationChain {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("[AuthChain] panic occurred: %v", err)
+			}
+		}()
 
 		if signedZone.Dnskey.IsEmpty() {
-			log.Printf("DNSKEY RR does not exist on %s\n", signedZone.Zone)
+			//log.Printf("DNSKEY RR does not exist on %s\n", signedZone.Zone)
 			return ErrDnskeyNotAvailable
 		}
 
 		// Verify the RRSIG of the DNSKEY RRset with the public KSK.
 		err := signedZone.verifyRRSIG(signedZone.Dnskey)
 		if err != nil {
-			log.Printf("validation DNSKEY: %s\n", err)
+			//log.Printf("validation DNSKEY: %s\n", err)
 			return ErrRrsigValidationError
 		}
 
 		if signedZone.ParentZone != nil {
 
 			if signedZone.Ds.IsEmpty() {
-				log.Printf("DS RR is not available on zoneName %s\n", signedZone.Zone)
+				//log.Printf("DS RR is not available on zoneName %s\n", signedZone.Zone)
 				return ErrDsNotAvailable
 			}
 
 			err := signedZone.ParentZone.verifyRRSIG(signedZone.Ds)
 			if err != nil {
-				log.Printf("DS on %s doesn't validate against RRSIG %d\n", signedZone.Zone, signedZone.Ds.RrSig.KeyTag)
+				//log.Printf("DS on %s doesn't validate against RRSIG %d\n", signedZone.Zone, signedZone.Ds.RrSig.KeyTag)
 				return ErrRrsigValidationError
 			}
 			err = signedZone.verifyDS(signedZone.Ds.RrSet)
 			if err != nil {
-				log.Printf("DS does not validate: %s", err)
+				//log.Printf("DS does not validate: %s", err)
 				return ErrDsInvalid
 			}
 		}
