@@ -38,9 +38,17 @@ func writeToDisk(results []Record, dirPath string) {
 	filePath := fmt.Sprintf("%v/results-%v.csv", dirPath, time.Now().Unix())
 	f, _ := os.Create(filePath)
 	writer := csv.NewWriter(f)
-	writer.Write([]string{"Domain", "DNSSECExists", "DNSSECValid", "reason"})
+	writer.Write([]string{"Domain", "DNSSECExists", "DNSSECValid", "reason", "Algorithms", "Protocols", "KeySizes"})
 	for _, r := range results {
-		row := []string{r.Domain, strconv.FormatBool(r.DNSSECExists), strconv.FormatBool(r.DNSSECValid), r.reason}
+		row := []string{
+			r.Domain,
+			strconv.FormatBool(r.DNSSECExists),
+			strconv.FormatBool(r.DNSSECValid),
+			r.reason,
+			r.AlgorithmsUsed,
+			r.ProtocolsUsed,
+			r.PublicKeySizes,
+		}
 		writer.Write(row)
 	}
 	writer.Flush()

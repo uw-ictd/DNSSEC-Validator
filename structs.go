@@ -5,4 +5,7 @@ type Record struct {
 	DNSSECExists bool
 	DNSSECValid  bool
 	reason       string
+	ProtocolsUsed string
+	AlgorithmsUsed string
+	PublicKeySizes string
 }

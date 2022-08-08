@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/miekg/dns"
 	"log"
+	"strconv"
 	"strings"
 )
 
@@ -20,6 +21,31 @@ type AuthenticationChain struct {
 func (authChain *AuthenticationChain) Serialize() (string, error) {
 	data, err := json.MarshalIndent(authChain, "", "  ")
 	return string(data), err
+}
+
+func (authChain *AuthenticationChain) SerializeKeyAlgorithmsUsed() ([]string, []string, []string, error) {
+	KeyAlgorithms := make([]string, 0)
+	ProtocolsUsed := make([]string, 0)
+	KeySizes := make([]string, 0)
+
+	for _, sz := range authChain.DelegationChain {
+		if sz.checkHasDnskeys() {
+			rr := sz.Dnskey.RrSet
+			for _, rrEntry := range rr {
+				dnskey := rrEntry.(*dns.DNSKEY)
+				algString := strconv.Itoa(int(dnskey.Algorithm))
+				KeyAlgorithms = append(KeyAlgorithms, algString)
+
+				protocol := strconv.Itoa(int(dnskey.Protocol))
+				ProtocolsUsed = append(ProtocolsUsed, protocol)
+
+				keySize := strconv.Itoa(len(dnskey.PublicKey))
+				KeySizes = append(KeySizes, keySize)
+			}
+		}
+	}
+
+	return KeyAlgorithms, ProtocolsUsed, KeySizes, nil
 }
 
 // Populate queries the RRs required for the Zone validation

@@ -22,7 +22,7 @@ func query(hostname string, dnsQueryType uint16) ([]dns.RR, *resolver.Authentica
 
 func worker(id int, rq *resolver.Resolver, records <-chan Record, results chan<- Record) {
 	for r := range records {
-		_, _, err := rq.StrictNSQuery(r.Domain, dns.TypeA)
+		_, chain, err := rq.StrictNSQuery(r.Domain, dns.TypeA)
 		if err != nil {
 			r := Record{Domain: r.Domain}
 			if err == resolver.ErrInvalidQuery {
@@ -47,10 +47,38 @@ func worker(id int, rq *resolver.Resolver, records <-chan Record, results chan<-
 				r.reason = err.Error()
 				r.DNSSECExists = true
 				r.DNSSECValid = false
+
+				if chain != nil {
+					algorithmsUsed, protocolsUsed, keySizes, err := chain.SerializeKeyAlgorithmsUsed()
+					if err != nil {
+						// There's nothing we can do.
+					} else {
+						algorithms := strings.Join(algorithmsUsed, "|")
+						protocols := strings.Join(protocolsUsed, "|")
+						keySizes := strings.Join(keySizes, "|")
+						r.AlgorithmsUsed = algorithms
+						r.ProtocolsUsed = protocols
+						r.PublicKeySizes = keySizes
+					}
+				}
 			}
 			results <- r
 		} else {
-			results <- Record{Domain: r.Domain, DNSSECExists: true, DNSSECValid: true, reason: ""}
+			algorithmsUsed, protocolsUsed, keySizesUsed, _ := chain.SerializeKeyAlgorithmsUsed()
+
+			algorithms := strings.Join(algorithmsUsed, "|")
+			protocols := strings.Join(protocolsUsed, "|")
+			keySizes := strings.Join(keySizesUsed, "|")
+
+			results <- Record{
+				Domain: r.Domain,
+				DNSSECExists: true,
+				DNSSECValid: true,
+				reason: "",
+				AlgorithmsUsed: algorithms,
+				ProtocolsUsed: protocols,
+				PublicKeySizes: keySizes,
+			}
 		}
 	}
 }
