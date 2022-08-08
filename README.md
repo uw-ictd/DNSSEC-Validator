@@ -18,6 +18,8 @@ The tool `validator` provides two subcommands:
 
 - `query`: Performs a DNSSEC existence check and validation on a single FQDN by looking at the DNS `A` Record (`0x01`)
     - A default query is made to `sudheesh.info.`
+    - query -d FQDN.   #trailing . required for a proper FQDN
+    - query --help
 - `measure`: Performs a DNSSEC existence check and validation as a batch
     - Valid FQDN list provided as `--inputlist` (default: `test.csv`)
     - Output directory for the results `--outdir` (default: `results/`)
@@ -34,6 +36,7 @@ NextDNS = "9.9.9.9" (3) if (2) fails
 ### Execution Example
 
 ```
+./validator query -d sudheesh.info.
 Valid DNS Record Answer for sudheesh.info. (1)
 sudheesh.info.  300     IN      A       104.21.61.113
 sudheesh.info.  300     IN      A       172.67.209.154
